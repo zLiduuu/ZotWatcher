@@ -23,7 +23,7 @@ jobs:
           
       - name: Install dependencies
         run: |
-          pip install pandas requests pyyaml tqdm requests_cache sentence-transformers faiss-cpu python-dotenv
+          pip install pandas requests pyyaml tqdm requests_cache sentence-transformers faiss-cpu python-dotenv pydantic pydantic-settings
   
       - name: Build Profile (Initial)
         env:
