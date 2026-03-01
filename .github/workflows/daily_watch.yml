@@ -1,8 +1,6 @@
 name: Daily Watch & RSS
 
 on:
-  schedule:
-    - cron: '0 6 * * *'
   push:
     branches: [ main ]
   workflow_dispatch:
@@ -17,18 +15,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
-      - name: Run Watch
+          pip install pandas requests pyyaml tqdm requests_cache sentence-transformers faiss-cpu
+
+      - name: Build Profile (Initial)
+        env:
+          ZOTERO_API_KEY: ${{ secrets.ZOTERO_API_KEY }}
+          ZOTERO_USER_ID: ${{ secrets.ZOTERO_USER_ID }}
+        run: python -m src.cli profile --full
+
+      - name: Run Watch (Top 50)
         env:
           ZOTERO_API_KEY: ${{ secrets.ZOTERO_API_KEY }}
           ZOTERO_USER_ID: ${{ secrets.ZOTERO_USER_ID }}
         run: python -m src.cli watch --rss --report --top 50
+
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -37,9 +45,6 @@ jobs:
   deploy:
     needs: watch
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
