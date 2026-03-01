@@ -2,105 +2,45 @@ name: Daily Watch & RSS
 
 on:
   schedule:
-    # 每天 UTC 06:00 (北京时间 14:00) 自动运行
     - cron: '0 6 * * *'
   push:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
-  watch-and-publish:
+  watch:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
-    
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-        cache: 'pip'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    
-    - name: Generate cache key
-      id: cache-key
-      run: |
-        echo "year_month=$(date +'%Y%m')" >> $GITHUB_OUTPUT
-    
-    - name: Create data directory
-      run: |
-        mkdir -p data
-    
-    - name: Restore profile cache
-      id: cache-profile
-      uses: actions/cache@v3
-      with:
-        path: |
-          data/profile.sqlite
-          data/faiss.index
-          data/profile.json
-        key: profile-v2-${{ steps.cache-key.outputs.year_month }}
-        restore-keys: |
-          profile-v2-
-    
-    - name: Check database schema compatibility
-      if: steps.cache-profile.outputs.cache-hit == 'true'
-      run: |
-        if [ -f data/profile.sqlite ]; then
-          echo "Checking database schema..."
-          python -c "
-          import sqlite3
-          import sys
-          try:
-              conn = sqlite3.connect('data/profile.sqlite')
-              cursor = conn.execute('PRAGMA table_info(items)')
-              columns = [row[1] for row in cursor.fetchall()]
-              if 'version' not in columns:
-                  print('Old schema detected, forcing rebuild')
-                  sys.exit(1)
-              else:
-                  print('Schema is compatible')
-          except Exception as e:
-              print(f'Error checking schema: {e}')
-              sys.exit(1)
-          " || echo "force_rebuild=true" >> $GITHUB_ENV
-        fi
-    
-    - name: Build full profile (if cache miss or new month)
-      if: steps.cache-profile.outputs.cache-hit != 'true' || env.force_rebuild == 'true'
-      env:
-        ZOTERO_API_KEY: ${{ secrets.ZOTERO_API_KEY }}
-        ZOTERO_USER_ID: ${{ secrets.ZOTERO_USER_ID }}
-        ALTMETRIC_KEY: ${{ secrets.ALTMETRIC_KEY }}
-        OPENALEX_MAILTO: ${{ secrets.OPENALEX_MAILTO }}
-        CROSSREF_MAILTO: ${{ secrets.CROSSREF_MAILTO }}
-      run: |
-        python -m src.cli profile --full
-    
-    - name: Run daily watch
-      env:
-        ZOTERO_API_KEY: ${{ secrets.ZOTERO_API_KEY }}
-        ZOTERO_USER_ID: ${{ secrets.ZOTERO_USER_ID }}
-        ALTMETRIC_KEY: ${{ secrets.ALTMETRIC_KEY }}
-        OPENALEX_MAILTO: ${{ secrets.OPENALEX_MAILTO }}
-        CROSSREF_MAILTO: ${{ secrets.CROSSREF_MAILTO }}
-      run: |
-        python -m src.cli watch --rss --report --top 100
-    
-    - name: Upload Pages artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: reports/
-    
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      - name: Run Watch
+        env:
+          ZOTERO_API_KEY: ${{ secrets.ZOTERO_API_KEY }}
+          ZOTERO_USER_ID: ${{ secrets.ZOTERO_USER_ID }}
+        run: python -m src.cli watch --rss --report --top 50
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'reports/'
+
+  deploy:
+    needs: watch
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
