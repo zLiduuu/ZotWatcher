@@ -33,3 +33,5 @@ crossref-commons>=0.0.7
 
 # 工具
 tqdm>=4.65.0
+
+rapidfuzz
