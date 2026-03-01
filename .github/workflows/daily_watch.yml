@@ -35,7 +35,7 @@ jobs:
         env:
           ZOTERO_API_KEY: ${{ secrets.ZOTERO_API_KEY }}
           ZOTERO_USER_ID: ${{ secrets.ZOTERO_USER_ID }}
-        run: python -m src.cli watch --rss --report --top 50
+        run: python -m src.cli watch --rss --report --top 25
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
