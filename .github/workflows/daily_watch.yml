@@ -23,8 +23,8 @@ jobs:
           
       - name: Install dependencies
         run: |
-          pip install pandas requests pyyaml tqdm requests_cache sentence-transformers faiss-cpu
-
+          pip install pandas requests pyyaml tqdm requests_cache sentence-transformers faiss-cpu python-dotenv
+  
       - name: Build Profile (Initial)
         env:
           ZOTERO_API_KEY: ${{ secrets.ZOTERO_API_KEY }}
